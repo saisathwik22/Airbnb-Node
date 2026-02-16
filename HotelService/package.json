@@ -5,7 +5,10 @@
   "type": "commonjs",
   "scripts": {
     "start": "ts-node src/server.ts",
-    "dev": "nodemon src/server.ts"
+    "dev": "nodemon src/server.ts",
+    "migrate": "sequelize-cli db:migrate",
+    "rollback": "sequelize-cli db:migrate:undo"
+
   },
   
   "keywords": [],
