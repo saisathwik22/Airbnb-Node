@@ -8,7 +8,6 @@
     "dev": "nodemon src/server.ts",
     "migrate": "sequelize-cli db:migrate",
     "rollback": "sequelize-cli db:migrate:undo"
-
   },
   
   "keywords": [],
