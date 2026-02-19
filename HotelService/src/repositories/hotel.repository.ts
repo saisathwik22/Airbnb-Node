@@ -23,5 +23,18 @@ export async function getHotelById(id: number) {
         logger.error(`Hotel not found: ${id}`)
         throw new NotFoundError(`Hotel with id ${id} not found`);
     }
+    logger.info(`Hotel found: ${hotel.id}`)
     return hotel;
+}
+
+export async function getAllHotels() {
+    const hotels = await Hotel.findAll();
+
+    if(!hotels) {
+        logger.error(`No hotels found`)
+        throw new NotFoundError(`No hotels found`)
+    }
+
+    logger.info(`Hotels found: ${hotels.length}`)
+    return hotels;
 }
