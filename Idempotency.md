@@ -4,7 +4,7 @@
 - Exploring problem of duplicate bookings in transactional systems like hotel/flight reservations
 - Introducing Idempotency as reliable backend pattern to avoid inconsistencies
 
----
+--
 
 ### Problem Statement : Double Bookings
 
@@ -44,7 +44,7 @@
 
 ---
 
-#### Optimal Solution : Backend-Driven Idempotency
+### Optimal Solution : Backend-Driven Idempotency
 
 ##### Idempotency:
 - An operation is idempotent if it can be applied multiple times without changing result beyond the first time.
