@@ -4,6 +4,7 @@
 - Exploring problem of duplicate bookings in transactional systems like hotel/flight reservations
 - Introducing Idempotency as reliable backend pattern to avoid inconsistencies
 
+---
 
 ### Problem Statement : Double Bookings
 
@@ -18,6 +19,8 @@
   - Frustration due to duplicate charges
   - Poor user experience
   - Revenue loss due to refunds
+
+---
  
 #### Naive Solution : Disable Button on Frontend
 
@@ -39,6 +42,7 @@
 
 `Conclusion`: Frontend controls can be bypassed. Always validate on server side.
 
+---
 
 #### Optimal Solution : Backend-Driven Idempotency
 
