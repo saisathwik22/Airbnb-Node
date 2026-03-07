@@ -22,9 +22,9 @@
 
 ---
  
-#### Naive Solution : Disable Button on Frontend
+### Naive Solution : Disable Button on Frontend
 
-##### Idea:
+#### Idea:
 - Use HTML or JavaScript to disable button after first click
   `<button disabled>Book Now</button>`
 - Or using JavaScript:
@@ -35,7 +35,7 @@
   });
   ```
 
-##### Why this is not enough ?
+#### Why this is not enough ?
 1. User can re-enable the button from browser developer tools.
 2. Browser might have JS turned off.
 3. Someone might hit your API using Postman, curl etc (3rd party clients)
@@ -44,7 +44,7 @@
 
 ---
 
-### Optimal Solution : Backend-Driven Idempotency
+## Optimal Solution : Backend-Driven Idempotency
 
 ##### Idempotency:
 - An operation is idempotent if it can be applied multiple times without changing result beyond the first time.
@@ -91,7 +91,7 @@
 - If the same key is received again, return stored response instead of processing again.
 - Just like Memoization in Dynamic Programming.
 
-##### Pseudo Code (Node.js + Express) :
+#### Pseudo Code (Node.js + Express) :
 
 ```
 const cache = {}; // can be Redis, DB table, etc.
