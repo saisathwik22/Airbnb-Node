@@ -58,4 +58,60 @@
 - Make `POST/bookings` idempotent to prevent multiple charges and bookings for the same user action.
 
 
-#### Implementation Strategy :
+### Implementation Strategy :
+
+#### 1. Generate an Idempotency Key (Client Side)
+
+- Unique identifier for the request is generated.
+- Example: UUIDv4 (universally unique identifier)
+- It can be generated using libraries:
+  ```
+  // JavaScript (frontend)
+  import { v4 as uuidv4 } from 'uuid';
+  const idempotencyKey = uuidv4();
+  ```
+
+#### 2. Send it in the API Request
+
+- POST /bookings HTTP/1.1
+  ```
+  Idempotency-Key: 123e4567-e89b-12d3-a456-426614174000
+  Content-Type: application/json
+
+  {
+    "userId": 101,
+    "roomId": 201,
+    "paymentDetails": {...}
+  }
+  ```
+
+#### 3. Handle it on the server
+
+- Save the key along with response when processing a request for first time.
+- If the same key is received again, return stored response instead of processing again.
+- Just like Memoization in Dynamic Programming.
+
+##### Pseudo Code (Node.js + Express) :
+
+```
+const cache = {}; // can be Redis, DB table, etc.
+
+app.post('/bookings', async (req, res) => {
+  const key = req.headers['idempotency-key'];
+  if(!key) {
+    return res.status(400).send({ error: 'Missing Idempotency Key' });
+  }
+  if(cache[key]) {
+    return res.status(200).send(cache[key]); // return cached response
+  }
+
+  const result = await createBooking(req.body); // booking logic
+  cache[key] = result; // save response
+
+  res.status(200).send(result);
+})
+```
+
+- Replace cache with Redis or DB table in production for persistence and scalability.
+
+
