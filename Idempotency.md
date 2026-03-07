@@ -115,3 +115,52 @@ app.post('/bookings', async (req, res) => {
 - Replace cache with Redis or DB table in production for persistence and scalability.
 
 
+
+## Real Life Example : Flipkart Flights via Cleartrip
+
+### Scenario:
+
+- Flipkart allows flight bookings.
+- Internally uses Cleartrip's API (their subsidiary).
+- When a user clicks `Book`, they are redirected to a URL with a unique itinerary ID.
+  `https://www.cleartrip.com/flights/itinerary/abc123xyz`
+
+### What happened behind the scenes ?
+
+- A `temporary booking` (draft) was created.
+- You're now on screen to fill traveler and payment info.
+- If you refresh or revisit, still same booking session (idempotent behavior)
+
+
+## Design Considerations
+
+### DB Table for Idempotency (SQL schema example)
+
+```
+CREATE TABLE idempotency_keys (
+    id VARCHAR(255) PRIMARY KEY,
+    user_id INT,
+    request_hash TEXT,
+    response_body TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+- Use request_hash to ensure content has not changed maliciously.
+
+### TTL Cleanup : Time to Live
+
+- Store `idempotency_keys` with TTL to prevent DB bloat.
+- Use Redis or a cron job to clean up old entries.
+
+
+## FAQs
+
+### 1. Can I use Idempotency for GET APIs?
+- Yes, but it's redundant. GET is already idempotent by design.
+
+### 2. Should every POST API be idempotent ?
+- Not always. Only those dealing with critical resource creation, money, or booking should.
+
+### 3. What if I get a different payload with same key ?
+- Reject the request. Or store a hash of the original request to compare.
