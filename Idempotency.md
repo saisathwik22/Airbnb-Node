@@ -1,4 +1,4 @@
-## Idempotency in Booking Systems
+# Idempotency in Booking Systems
 
 ### Overview:
 - Exploring problem of duplicate bookings in transactional systems like hotel/flight reservations
