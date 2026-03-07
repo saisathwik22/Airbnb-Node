@@ -4,7 +4,7 @@
 - Exploring problem of duplicate bookings in transactional systems like hotel/flight reservations
 - Introducing Idempotency as reliable backend pattern to avoid inconsistencies
 
-***
+---
 
 ### Problem Statement : Double Bookings
 
