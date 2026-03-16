@@ -1,5 +1,6 @@
 import express from 'express';
-import { serverConfig } from './config';
+import "dotenv/config";
+import { serverConfig } from './config/index';
 import v1Router from './routers/v1/index.router';
 import v2Router from './routers/v2/index.router';
 import { appErrorHandler, genericErrorHandler } from './middlewares/error.middleware';
@@ -24,7 +25,7 @@ app.use('/api/v2', v2Router);
 
 app.use(appErrorHandler);
 app.use(genericErrorHandler);
-
+console.log("DB URL:", process.env.DATABASE_URL);
 
 app.listen(serverConfig.PORT, () => {
     logger.info(`Server is running on http://localhost:${serverConfig.PORT}`);
