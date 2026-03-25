@@ -22,12 +22,12 @@ model booking {
 
 model idempotencykey {
   id        Int      @id @default(autoincrement())
-  key       String   @unique(map: "IdempotencyKey_key_key")
+  idemKey   String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  bookingId Int      @unique(map: "IdempotencyKey_bookingId_key")
+  bookingId Int      @unique
   finalized Boolean  @default(false)
-  booking   booking  @relation(fields: [bookingId], references: [id], map: "IdempotencyKey_bookingId_fkey")
+  booking   booking  @relation(fields: [bookingId], references: [id])
 }
 
 enum booking_status {

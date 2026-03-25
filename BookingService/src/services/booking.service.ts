@@ -1,14 +1,16 @@
 import { CreateBookingDTO } from "../dto/booking.dto";
-import { confirmBooking, createBooking, createIdempotencyKey, finalizeIdempotencyKey, getIdempotencyKey } from "../repositories/booking.repository";
+import { confirmBooking, createBooking, createIdempotencyKey, finalizeIdempotencyKey, getIdempotencyKeyWithLock } from "../repositories/booking.repository";
 import { BadRequestError, NotFoundError } from "../utils/errors/app.error";
 import { generateIdempotencyKey } from "../utils/generateIdempotencyKey";
 
-export async function createBookingService(CreateBookingDTO: CreateBookingDTO){
+import prismaClient from "../../prisma/client";
+
+export async function createBookingService(CreateBookingDTO: CreateBookingDTO) {
     const booking = await createBooking({
         userId: CreateBookingDTO.userId,
         hotelId: CreateBookingDTO.hotelId,
         totalGuests: CreateBookingDTO.totalGuests,
-        bookingAmount: CreateBookingDTO.bookingAmount,                                     
+        bookingAmount: CreateBookingDTO.bookingAmount,
     });
 
     const idempotencyKey = generateIdempotencyKey();
@@ -21,19 +23,33 @@ export async function createBookingService(CreateBookingDTO: CreateBookingDTO){
     }
 }
 
+// Potential issues and improvements ??
+// wrapping complete logic in single transaction
 export async function confirmBookingService(idempotencyKey: string) {
-    const idempotencyKeyData = await getIdempotencyKey(idempotencyKey)
 
-    if(!idempotencyKeyData) {
-        throw new NotFoundError('Idempotency key not found.')
-    }
- 
-    if(idempotencyKeyData.finalized) {
-        throw new BadRequestError('Idempotency key already finalized, booking already confirmed.')
-    }
+    return await prismaClient.$transaction(async (tx) => {
+        const idempotencyKeyData = await getIdempotencyKeyWithLock(tx, idempotencyKey)
 
-    const booking = await confirmBooking(idempotencyKeyData.id);
-    await finalizeIdempotencyKey(idempotencyKey);
-     
-    return booking;
-}   
+        if (!idempotencyKeyData || !idempotencyKeyData.bookingId) {
+            throw new NotFoundError('Idempotency key not found.')
+        }
+
+        if (idempotencyKeyData.finalized) {
+            throw new BadRequestError('Idempotency key already finalized, booking already confirmed.')
+        }
+
+        const booking = await confirmBooking(tx, idempotencyKeyData.bookingId);
+        await finalizeIdempotencyKey(tx, idempotencyKey);
+
+        return booking;
+    });
+
+
+}
+
+// Two back to back requests made from same user with very negligable seconds of difference.
+// How will it handle this type of concurrency issue from same user ?
+// Pessimistic Lock
+// ensure that one of user request succeeds
+// So, the first request gets a lock and rest wait.
+// first will be processed and completed, rest will be dropped.
