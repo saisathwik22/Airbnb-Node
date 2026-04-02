@@ -44,7 +44,6 @@ export async function getIdempotencyKeyWithLock(tx: Prisma.TransactionClient, ke
     )
 
     
-
     if(!idempotencyKey || idempotencyKey.length === 0) {
         throw new NotFoundError('Idempotency Key not found')
     }
