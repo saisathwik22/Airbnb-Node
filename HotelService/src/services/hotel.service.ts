@@ -24,3 +24,5 @@ export async function deleteHotelService(id: number) {
     const response = await hotelRepository.softDelete(id);
     return response;
 }
+
+//updation

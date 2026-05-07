@@ -52,7 +52,7 @@ class BaseRepository<T extends Model> {
     }
 }
 
-
+// updated
 
 export default BaseRepository;
 

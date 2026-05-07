@@ -11,6 +11,8 @@ export async function createRoomCategoryService(createRoomCategoryDTO: CreateRoo
     return roomCategory;
 }
 
+//updation
+
 export async function getRoomCategoryByIdService(id: number) {
     const roomCategory = await roomCategoryRepository.findById(id);
     return roomCategory;

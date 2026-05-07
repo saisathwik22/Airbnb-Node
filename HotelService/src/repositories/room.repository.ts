@@ -10,3 +10,5 @@ class RoomRepository extends BaseRepository<Room> {
 }
 
 export default RoomRepository;  
+
+// updated

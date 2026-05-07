@@ -58,7 +58,7 @@ import BaseRepository from "./base.repository";
 //     return true;
 // }
 
-
+// updated
 export class HotelRepository extends BaseRepository<Hotel> {
     constructor() {
         super(Hotel)

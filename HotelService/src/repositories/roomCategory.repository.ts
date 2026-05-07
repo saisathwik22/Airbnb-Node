@@ -22,3 +22,5 @@ class RoomCategoryRepository extends BaseRepository<RoomCategory> {
 }
 
 export default RoomCategoryRepository
+
+//updated
