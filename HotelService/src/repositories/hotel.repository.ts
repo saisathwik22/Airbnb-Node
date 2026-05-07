@@ -1,6 +1,6 @@
 import logger from "../config/logger.config";
 import Hotel from "../db/models/hotel";
-// import { createHotelDTO } from "../dto/hotel.dto";
+
 import { NotFoundError } from "../utils/errors/app.error";
 import BaseRepository from "./base.repository";
 
