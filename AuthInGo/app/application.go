@@ -13,7 +13,6 @@ import (
 
 type Application struct {
 	Config Config
-	Store  db.Storage
 }
 
 // Config holds the configuration for the server
@@ -33,7 +32,6 @@ func NewCofig() Config {
 func NewApplication(cfg Config) *Application {
 	return &Application{
 		Config: cfg,
-		Store:  *db.NewStorage(),
 	}
 }
 
