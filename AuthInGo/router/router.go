@@ -16,7 +16,9 @@ func SetupRouter(UserRouter Router) *chi.Mux {
 	chiRouter := chi.NewRouter()
 
 	// chiRouter.Use(middlewares.RequestLogger)
+
 	chiRouter.Use(middleware.Logger)
+	// chiRouter.Use(middlewares.RequestValidator)
 
 	chiRouter.Get("/ping", controllers.PingHandler)
 

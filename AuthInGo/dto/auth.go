@@ -10,3 +10,9 @@ type LoginUserRequestDTO struct {
 // json marshalling:
 // process of converting a data structure (struct) into JSON string using json Marshal function
 // UnMarshalling  is reverse process, Json -> struct again. Unmarshal function
+
+type CreateUserRequestDTO struct {
+	Username string `json:"username" validate:"required,min=3,max=20"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
+}
