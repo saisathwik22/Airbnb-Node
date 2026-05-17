@@ -38,7 +38,7 @@ func (uc *UserController) GetUserById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if user == nil {
-		utils.WriteJsonErrorResponse(w, http.StatusNotFound, "User not found", fmt.Errorf("user with ID %d not found", userId))
+		utils.WriteJsonErrorResponse(w, http.StatusNotFound, "User not found", fmt.Errorf("user with ID %s not found", userId))
 		return
 	}
 	utils.WriteJsonSucessResponse(w, http.StatusOK, "User fetched successfully", user)
