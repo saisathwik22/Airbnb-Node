@@ -152,5 +152,5 @@ func (u *UserRepositoryImpl) GetByID(id string) (*models.User, error) {
 	// Step 4 : Print user details
 	fmt.Println("User fetched successfully", user)
 
-	return nil, err
+	return user, err
 }

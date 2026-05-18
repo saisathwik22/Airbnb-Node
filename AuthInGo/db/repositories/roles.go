@@ -8,6 +8,10 @@ import (
 type RoleRepository interface {
 	GetRoleById(id int64) (*models.Role, error)
 	GetRoleByName(name string) (*models.Role, error)
+	GetAllRoles() ([]*models.Role, error)
+	CreateRole(name string, description string) (*models.Role, error)
+	DeleteRoleById(id int64) error
+	UpdateRole(id int64, name string, description string) (*models.Role, error)
 }
 
 type RoleRepositoryImpl struct {
@@ -105,7 +109,7 @@ func (r *RoleRepositoryImpl) DeleteRoleById(id int64) error {
 	return nil
 }
 
-func (r *RoleRepositoryImpl) UpdatedRole(id int64, name string, description string) (*models.Role, error) {
+func (r *RoleRepositoryImpl) UpdateRole(id int64, name string, description string) (*models.Role, error) {
 	query := "UPDATE roles SET name = ?, description = ?, updated_at = NOW() WHERE id = ?"
 	_, err := r.db.Exec(query, name, description, id)
 	if err != nil {
