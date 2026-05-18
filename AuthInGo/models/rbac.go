@@ -20,7 +20,7 @@ type Permission struct {
 
 type RolePermission struct {
 	Id           int64
-	Role         int64
+	RoleId       int64
 	PermissionId int64
 	CreatedAt    string
 	UpdatedAt    string
