@@ -4,6 +4,43 @@ import Hotel from "../db/models/hotel";
 import { NotFoundError } from "../utils/errors/app.error";
 import BaseRepository from "./base.repository";
 
+
+// updated
+export class HotelRepository extends BaseRepository<Hotel> {
+    constructor() {
+        super(Hotel)
+    }
+
+    async findAll() {
+        const hotels = await this.model.findAll({
+            where: {
+                deletedAt: null
+            }
+        })
+        if(!hotels) {
+            logger.error(`No hotels found`)
+            throw new NotFoundError(`No hotels found`)
+        }
+        logger.info(`Hotels found: ${hotels.length}`)
+        return hotels;
+    }
+
+    async softDelete(id: number) {
+        const hotel = await Hotel.findByPk(id);
+
+        if(!hotel) {
+            logger.error(`Hotel not found ${id}`)
+            throw new NotFoundError(`Hotel with id ${id} not found`)
+        }
+        hotel.deletedAt = new Date();
+        await hotel.save();
+        logger.info(`Hotel soft deleted: ${hotel.id}`)
+        return true;
+    }
+}
+
+
+
 // export async function createHotel(hotelData: createHotelDTO){
 //     const hotel = await Hotel.create({
 //         name: hotelData.name,
@@ -57,37 +94,3 @@ import BaseRepository from "./base.repository";
 //     logger.info(`Hotel soft deleted: ${hotel.id}`)
 //     return true;
 // }
-
-// updated
-export class HotelRepository extends BaseRepository<Hotel> {
-    constructor() {
-        super(Hotel)
-    }
-
-    async findAll() {
-        const hotels = await this.model.findAll({
-            where: {
-                deletedAt: null
-            }
-        })
-        if(!hotels) {
-            logger.error(`No hotels found`)
-            throw new NotFoundError(`No hotels found`)
-        }
-        logger.info(`Hotels found: ${hotels.length}`)
-        return hotels;
-    }
-
-    async softDelete(id: number) {
-        const hotel = await Hotel.findByPk(id);
-
-        if(!hotel) {
-            logger.error(`Hotel not found ${id}`)
-            throw new NotFoundError(`Hotel with id ${id} not found`)
-        }
-        hotel.deletedAt = new Date();
-        await hotel.save();
-        logger.info(`Hotel soft deleted: ${hotel.id}`)
-        return true;
-    }
-}

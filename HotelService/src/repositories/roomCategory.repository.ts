@@ -1,7 +1,7 @@
 import RoomCategory from "../db/models/roomCategory";
 import BaseRepository from "./base.repository";
 
-class RoomCategoryRepository extends BaseRepository<RoomCategory> {
+export class RoomCategoryRepository extends BaseRepository<RoomCategory> {
     constructor() {
         super(RoomCategory)
     }
@@ -21,6 +21,5 @@ class RoomCategoryRepository extends BaseRepository<RoomCategory> {
     }
 }
 
-export default RoomCategoryRepository
 
 //updated
