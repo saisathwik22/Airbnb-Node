@@ -99,7 +99,10 @@ export async function processDateBatch(roomCategory: RoomCategory, startDate: Da
         datesProcessed++;
     }
 
+    console.log(`Rooms to create: ${JSON.stringify(roomsToCreate)}`)
+
     if (roomsToCreate.length > 0) {
+        logger.info(`Creating ${roomsToCreate.length} rooms`)
         await roomRepository.bulkCreate(roomsToCreate)
         roomsCreated += roomsToCreate.length;
     }
