@@ -1,618 +1,536 @@
 # 🏨 Distributed Hotel Booking System
 
-<div align="center">
+> A production-style microservices platform for hotel bookings — built to solve real-world distributed systems challenges like concurrent bookings, duplicate confirmations, and ghost bookings.
 
-# Airbnb-Style Microservices Booking Platform
+<br>
 
-### Scalable • Concurrent • Fault-Tolerant • Event-Driven
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Go](https://img.shields.io/badge/Golang-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![BullMQ](https://img.shields.io/badge/BullMQ-FF4040?style=for-the-badge&logo=redis&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
 
-Built using **Node.js**, **TypeScript**, **Golang**, **MySQL**, **Redis**, **BullMQ**, and **Prisma**.
-
-</div>
-
----
-
-# 📌 Overview
-
-This project is a **production-style distributed hotel booking platform** inspired by real-world systems like Airbnb.
-
-The architecture is designed using **microservices principles**, where every service owns its own responsibility, database, and business logic.
-
-The system focuses heavily on solving real backend engineering challenges such as:
-
-* Preventing **double booking** during concurrent requests
-* Handling **duplicate booking confirmations** safely
-* Cleaning up **ghost bookings** automatically
-* Processing notifications asynchronously using queues
-* Keeping services loosely coupled and independently deployable
+<br>
 
 ---
 
-# 🏗️ System Architecture
+## 📌 Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Services](#services)
+- [Core Problems Solved](#core-problems-solved)
+- [Booking Creation Flow](#booking-creation-flow)
+- [Booking Confirmation Flow](#booking-confirmation-flow)
+- [Ghost Booking Cleanup](#ghost-booking-cleanup)
+- [Database Schema](#database-schema)
+- [Service Communication](#service-communication)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+
+---
+
+## Overview
+
+This project simulates a real-world hotel booking platform similar to Airbnb, using a microservices architecture. Each service is independently deployable, owns its own database, and communicates with other services only through REST APIs or Redis queues — never through shared databases.
+
+### What makes this project different
+
+| Challenge | Solution |
+|---|---|
+| Two users booking the same room at the same time | Redis Redlock distributed locking |
+| Same user confirming a booking multiple times | UUID idempotency key + pessimistic row lock |
+| Rooms blocked forever by unconfirmed bookings | Expiry window + cron job cleanup |
+| Wrong user confirming someone else's booking | User verification via DB join + JWT |
+
+---
+
+## Architecture
+
+All client requests pass through a Golang API Gateway before reaching any microservice. Each service owns a dedicated MySQL database. No cross-database joins are allowed.
 
 ```mermaid
-flowchart TD
-    Client[Client / Frontend]
-
-    Client --> Gateway[API Gateway - Golang]
-
-    Gateway --> Hotel[Hotel Service]
-    Gateway --> Booking[Booking Service]
-    Gateway --> Review[Review Service]
-    Gateway --> Notification[Notification Service]
-
-    Hotel --> MySQL1[(MySQL - Hotel DB)]
-    Booking --> MySQL2[(MySQL - Booking DB)]
-    Review --> MySQL3[(MySQL - Review DB)]
-
-    Booking --> Redis[(Redis)]
-    Notification --> Redis
-    Hotel --> Redis
-
-    Redis --> Queue[BullMQ Queue]
-    Queue --> Worker[Notification Workers]
-```
-
----
-
-# 🚀 Core Features
-
-<div align="center">
-
-| Feature                            | Description                                    |
-| ---------------------------------- | ---------------------------------------------- |
-| 🔒 Distributed Locking             | Prevents multiple users from booking same room |
-| 🔁 Idempotent Booking Confirmation | Prevents duplicate confirmations               |
-| 📬 Queue-Based Notifications       | Async email processing using BullMQ            |
-| 🧹 Ghost Booking Cleanup           | Automatically releases expired bookings        |
-| 🧩 Microservices Architecture      | Independent and scalable services              |
-| 📦 Database Migrations             | Version controlled schema updates              |
-| 🧠 Layered Architecture            | Clean separation of responsibilities           |
-| ⚡ Redis Integration                | Fast distributed coordination                  |
-
-</div>
-
----
-
-# 🧱 Services
-
-# 1️⃣ API Gateway (Golang)
-
-The API Gateway acts as the **single entry point** for all client requests.
-
-No service is directly exposed publicly.
-
-## Responsibilities
-
-* JWT Authentication
-* Role-Based Access Control (RBAC)
-* Reverse Proxy Routing
-* Request Forwarding
-* Hiding Internal Service URLs
-
----
-
-## API Gateway Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Gateway
-    participant Service
-
-    Client->>Gateway: HTTP Request + JWT
-    Gateway->>Gateway: Validate JWT
-    Gateway->>Gateway: Check RBAC Permissions
-    Gateway->>Service: Forward Request
-    Service-->>Gateway: Response
-    Gateway-->>Client: Final Response
-```
-
----
-
-# 2️⃣ Hotel Service
-
-Responsible for all hotel, room category and room availability operations.
-
----
-
-## Responsibilities
-
-* Hotel CRUD operations
-* Room category management
-* Room availability checking
-* Booking ID assignment and release
-* Bulk room generation
-* Maintaining room availability windows
-
----
-
-# 🛏️ Room Availability Design
-
-Instead of storing one room record permanently, each row represents:
-
-> **One room available on one specific date**
-
-This simplifies date-range availability queries.
-
----
-
-## Availability Query
-
-```sql
-SELECT * FROM rooms
-WHERE roomCategoryId = ?
-AND bookingId IS NULL
-AND dateOfAvailability BETWEEN ? AND ?
-```
-
----
-
-# 🏨 Room Generation Architecture
-
-```mermaid
-flowchart TD
-    A[Admin Creates Room Inventory]
-    --> B[Producer Pushes Job to BullMQ]
-
-    B --> C[Redis Queue]
-
-    C --> D[Worker Consumes Job]
-
-    D --> E[Generate Room Entries in Batches]
-
-    E --> F[Store Availability for Next 90 Days]
-
-    G[Cron Job Runs Daily]
-    --> H[Extend Future Availability Window]
-```
-
----
-
-# 🗑️ Soft Delete Strategy
-
-Hotels are never permanently deleted.
-
-Instead:
-
-```text
-deleted_at = current timestamp
-```
-
-This preserves:
-
-* Historical records
-* Auditing capability
-* Booking references
-
-while hiding deleted hotels from active queries.
-
----
-
-# 3️⃣ Booking Service
-
-The Booking Service handles the entire booking lifecycle.
-
-This service is responsible for solving:
-
-* Concurrency problems
-* Duplicate confirmations
-* Booking consistency
-* Transaction safety
-* Expired booking cleanup
-
----
-
-# 📌 Booking Creation Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant BookingService
-    participant HotelService
-    participant Redis
-    participant DB
-
-    User->>BookingService: Create Booking
-
-    BookingService->>HotelService: Check Room Availability
-
-    HotelService-->>BookingService: Rooms Available
-
-    BookingService->>Redis: Acquire Distributed Lock
-
-    Redis-->>BookingService: Lock Acquired
-
-    BookingService->>DB: Create PENDING Booking
-
-    BookingService->>DB: Generate Idempotency Key
-
-    BookingService->>HotelService: Assign bookingId to Room
-
-    BookingService->>Redis: Release Lock
-
-    BookingService-->>User: bookingId + idempotencyKey
-```
-
----
-
-# 🔁 Booking Confirmation Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant BookingService
-    participant DB
-
-    User->>BookingService: Confirm Booking
-
-    BookingService->>DB: Start Transaction
-
-    BookingService->>DB: SELECT FOR UPDATE
-
-    BookingService->>DB: Check finalized flag
-
-    alt Already Finalized
-        BookingService-->>User: Reject Duplicate Confirmation
-    else Not Finalized
-        BookingService->>DB: Update Booking Status
-        BookingService->>DB: finalized = true
-        BookingService->>DB: Commit Transaction
-        BookingService-->>User: Booking Confirmed
+graph TD
+    Client["🖥️ Client"]
+
+    Client --> GW
+
+    subgraph GW["🔐 API Gateway (Golang)"]
+        direction LR
+        JWT["JWT Verification"]
+        RBAC["Role-Based Access Control"]
+        PROXY["Reverse Proxy"]
     end
+
+    GW --> HS
+    GW --> BS
+    GW --> NS
+    GW --> RS
+
+    subgraph HS["🏨 Hotel Service (Node.js)"]
+        HDB[("MySQL\nairbnb_dev_mode")]
+    end
+
+    subgraph BS["📅 Booking Service (Node.js)"]
+        BDB[("MySQL\nairbnb_booking_dev")]
+        REDIS[("Redis\nRedlock + Queue")]
+    end
+
+    subgraph NS["📧 Notification Service (Node.js)"]
+        WORKER["BullMQ Worker"]
+        MAILER["Nodemailer"]
+    end
+
+    subgraph RS["⭐ Review Service (Node.js)"]
+        CRON["Cron Job"]
+        RDB[("MySQL\nairbnb_review_dev")]
+    end
+
+    BS -->|"HTTP API calls"| HS
+    BS -->|"Redis Queue"| NS
+    RS -->|"HTTP PATCH rating"| HS
 ```
 
 ---
 
-# 🔒 Distributed Locking (Redlock)
+## Services
 
-To prevent two users from booking the same room simultaneously, the system uses:
+### 🔐 API Gateway — Golang
 
-* Redis
-* Redlock Algorithm
+The single entry point for all client requests. No microservice is directly accessible without passing through the gateway.
 
----
+| Feature | Description |
+|---|---|
+| JWT Authentication | Verifies token on every incoming request |
+| Role-Based Access Control | Enforces `user` and `admin` roles per route |
+| Reverse Proxy | Forwards requests to correct microservice |
+| Security | Internal service endpoints are never exposed to clients |
 
-## Locking Flow
-
-```mermaid
-flowchart TD
-    A[User Requests Booking]
-    --> B[Generate Booking Resource Key]
-
-    B --> C[Acquire Redis Lock]
-
-    C -->|Success| D[Proceed with Booking]
-
-    C -->|Failure| E[Reject / Retry Request]
-
-    D --> F[Create Booking]
-
-    F --> G[Release Lock]
-```
+> **Why Golang?** Golang is fast, concurrent and strongly typed — ideal for a gateway handling high traffic with low latency.
 
 ---
 
-# 🔑 Idempotency Key System
+### 🏨 Hotel Service — Node.js + Sequelize
 
-Every booking confirmation request uses a UUID-based idempotency key.
+Manages all hotel and room data. Exposes APIs consumed by the Booking Service.
 
-This guarantees:
-
-✅ One successful confirmation only
-
-✅ Safe retries during network failures
-
-✅ No duplicate operations
-
----
-
-## Idempotency Lifecycle
-
-```mermaid
-flowchart LR
-    A[Create Booking]
-    --> B[Generate UUID]
-
-    B --> C[Store in Idempotency Table]
-
-    C --> D[Client Sends Confirmation]
-
-    D --> E[Check finalized flag]
-
-    E -->|false| F[Confirm Booking]
-
-    E -->|true| G[Reject Duplicate Request]
-```
+| Feature | Description |
+|---|---|
+| Hotel CRUD | Create, read, update, soft delete hotels |
+| Room availability check | Query rooms by category and date range |
+| Assign booking to room | Mark room as temporarily unavailable |
+| Release room | Free room when booking expires |
+| Room generation | Auto-generate rooms for next 90 days via BullMQ |
+| Soft delete | Uses `deleted_at` column — records never permanently removed |
 
 ---
 
-# 👻 Ghost Booking Cleanup
+### 📅 Booking Service — Node.js + Prisma
 
-Sometimes users abandon the booking flow.
+The core of the system. Handles the complete booking lifecycle from creation to confirmation.
 
-This can permanently block rooms.
-
-To solve this:
-
-* Every booking gets an `expiredAt` timestamp
-* Cron jobs continuously cleanup expired bookings
-
----
-
-## Cleanup Flow
-
-```mermaid
-flowchart TD
-    A[Cron Job Runs Every Minute]
-    --> B[Find Expired PENDING Bookings]
-
-    B --> C[Mark Booking as EXPIRED]
-
-    C --> D[Call Hotel Service]
-
-    D --> E[Remove bookingId from Room]
-
-    E --> F[Room Becomes Available Again]
-```
+| Feature | Description |
+|---|---|
+| Booking creation | Checks availability, locks resource, creates booking |
+| Booking confirmation | Atomic transaction with pessimistic locking |
+| Ghost booking cleanup | Cron job detects and releases expired bookings |
+| Idempotency | UUID-based key prevents duplicate confirmations |
+| User verification | Confirms booking creator matches logged-in user |
 
 ---
 
-# 4️⃣ Notification Service
+### 📧 Notification Service — Node.js + BullMQ
 
-The Notification Service handles asynchronous email delivery.
+Completely decoupled from other services. Listens to a Redis queue and sends emails asynchronously.
 
-The Booking Service never directly sends emails.
-
-Instead, it pushes jobs into a Redis queue.
+| Feature | Description |
+|---|---|
+| Queue consumer | BullMQ worker listens on `mailer-queue` |
+| Email templates | Handlebars `.hbs` templates for each email type |
+| Singleton Redis | One reusable connection using JavaScript closures |
+| Transactional emails | Sent via Nodemailer |
 
 ---
 
-# 📬 Queue-Based Communication
+### ⭐ Review Service — Node.js
+
+Manages user reviews and calculates hotel ratings asynchronously via cron job.
+
+| Feature | Description |
+|---|---|
+| Review storage | Stores user reviews per hotel |
+| Async rating calculation | Cron job aggregates reviews periodically |
+| Hotel rating update | Calls Hotel Service API with new average rating |
+
+---
+
+## Core Problems Solved
+
+### Problem 1 — Two users booking the same room simultaneously
 
 ```mermaid
 sequenceDiagram
+    participant UserA
+    participant UserB
     participant BookingService
-    participant RedisQueue
-    participant NotificationWorker
-    participant Nodemailer
-    participant User
+    participant Redis
 
-    BookingService->>RedisQueue: Push Email Job
+    UserA->>BookingService: POST /bookings (roomId: 101)
+    UserB->>BookingService: POST /bookings (roomId: 101)
 
-    NotificationWorker->>RedisQueue: Consume Job
+    BookingService->>Redis: Acquire Redlock on booking:101
+    Redis-->>BookingService: ✅ Lock acquired (User A)
 
-    NotificationWorker->>NotificationWorker: Load Handlebars Template
+    BookingService->>Redis: Acquire Redlock on booking:101
+    Redis-->>BookingService: ❌ Lock already held (User B fails)
 
-    NotificationWorker->>Nodemailer: Send Email
-
-    Nodemailer-->>User: Booking Email
+    BookingService-->>UserA: ✅ Booking created
+    BookingService-->>UserB: ❌ Error - try again
 ```
 
----
-
-# ⚡ Why Queue-Based Processing?
-
-Using Redis queues provides:
-
-* Loose coupling between services
-* Faster booking responses
-* Retry mechanisms
-* Failure tolerance
-* Background processing
-
-Even if Notification Service goes down temporarily:
-
-✅ Jobs remain safely stored in Redis.
+**Solution:** Redis Redlock uses an atomic `SET NX PX` command — only one request can hold the lock at a time. TTL ensures the lock auto-expires if something crashes mid-booking.
 
 ---
 
-# ♻️ Singleton Redis Connection
-
-Instead of creating new Redis connections repeatedly:
-
-✅ One Redis connection is created and reused.
-
-This prevents:
-
-* TCP connection exhaustion
-* Resource wastage
-* Redis client overload
-* Performance degradation
-
----
-
-# 5️⃣ Review Service
-
-Responsible for handling hotel reviews and ratings.
-
----
-
-## Review Aggregation Flow
+### Problem 2 — Same user confirming booking multiple times
 
 ```mermaid
-flowchart TD
-    A[Users Submit Reviews]
-    --> B[Store Reviews]
+sequenceDiagram
+    participant User
+    participant BookingService
+    participant DB
 
-    B --> C[Cron Job Aggregates Reviews]
+    User->>BookingService: POST /confirm (idemKey: abc-123)
+    BookingService->>DB: SELECT FOR UPDATE on IdempotencyKey
+    DB-->>BookingService: finalized = false
+    BookingService->>DB: UPDATE status CONFIRMED, finalized = true
+    BookingService-->>User: ✅ Booking confirmed
 
-    C --> D[Calculate Average Rating]
-
-    D --> E[Update Hotel Service]
+    User->>BookingService: POST /confirm (idemKey: abc-123) again
+    BookingService->>DB: SELECT FOR UPDATE on IdempotencyKey
+    DB-->>BookingService: finalized = true
+    BookingService-->>User: ❌ Already confirmed - rejected
 ```
 
----
-
-# 🧠 Problems Solved
-
-# 1️⃣ Double Booking Problem
-
-### Problem
-
-Two users try to book the same room simultaneously.
-
-### Solution
-
-Redis Distributed Locking using Redlock.
+**Solution:** UUID idempotency key with `finalized` flag inside a Prisma transaction with `SELECT ... FOR UPDATE` row-level lock. No matter how many times the request is sent, it only processes once.
 
 ---
 
-# 2️⃣ Duplicate Confirmation Requests
-
-### Problem
-
-Users accidentally click confirm multiple times.
-
-### Solution
-
-UUID-based idempotency keys + row-level pessimistic locking.
-
----
-
-# 3️⃣ Ghost Bookings
-
-### Problem
-
-Users abandon booking flow but rooms remain blocked.
-
-### Solution
-
-Expiry windows + automatic cron cleanup.
-
----
-
-# 🗃️ Database Architecture
-
-Each service owns its own database.
-
-No direct SQL joins are allowed across services.
+### Problem 3 — Ghost bookings blocking rooms indefinitely
 
 ```mermaid
 flowchart LR
-    HotelService --> HotelDB[(Hotel DB)]
-    BookingService --> BookingDB[(Booking DB)]
-    ReviewService --> ReviewDB[(Review DB)]
+    A["Booking created\nstatus = PENDING\nexpiredAt = now + 10min"]
+    B{"Cron job\nevery minute"}
+    C{"expiredAt\n< now?"}
+    D["Mark booking\nEXPIRED"]
+    E["Call Hotel Service\nrelease room"]
+    F["Room available\nfor others"]
+    G["Booking confirmed\nbefore expiry"]
+
+    A --> B
+    B --> C
+    C -->|Yes| D
+    D --> E
+    E --> F
+    C -->|No| G
 ```
 
-This ensures:
-
-* Independent scaling
-* Service isolation
-* Better maintainability
-* Independent deployments
+**Solution:** Every booking gets `expiredAt = now + 10 minutes`. A cron job runs every minute, finds unconfirmed expired bookings, and releases their rooms.
 
 ---
 
-# 🔄 Service Communication
+### Problem 4 — Wrong user confirming someone else's booking
 
-| From            | To                   | Communication Type |
-| --------------- | -------------------- | ------------------ |
-| Booking Service | Hotel Service        | REST API           |
-| Booking Service | Notification Service | Redis Queue        |
-| Review Service  | Hotel Service        | REST API           |
-| API Gateway     | All Services         | Reverse Proxy      |
+**Solution:** The IdempotencyKey and Booking tables are joined to extract the `userId` who created the booking. This is compared against the logged-in user's ID extracted from the JWT token. If they don't match, the request is rejected.
 
 ---
 
-# 🛠️ Tech Stack
+## Booking Creation Flow
 
-<div align="center">
+```mermaid
+flowchart TD
+    A["Client sends POST /bookings\nroomCategoryId, checkIn, checkOut, userId"]
+    B["Call Hotel Service\nGET /rooms/availability"]
+    C{"Rooms\navailable?"}
+    D["Return error\nNo rooms available"]
+    E["Acquire Redis Redlock\non room resource with TTL"]
+    F{"Lock\nacquired?"}
+    G["Return 500 error\nTry again"]
+    H["Create booking in DB\nstatus=PENDING, expiredAt=now+10min"]
+    I["Generate UUID\nidempotency key"]
+    J["Store in IdempotencyKey table\nlinked to bookingId"]
+    K["Call Hotel Service\nPATCH /rooms/update-booking"]
+    L["Release Redis lock"]
+    M["Return bookingId\n+ idempotencyKey to client"]
 
-| Layer               | Technology                     |
-| ------------------- | ------------------------------ |
-| API Gateway         | Golang                         |
-| Backend Services    | Node.js + TypeScript           |
-| ORM                 | Prisma + Sequelize             |
-| Database            | MySQL                          |
-| Distributed Locking | Redis + Redlock                |
-| Queue Processing    | BullMQ                         |
-| Email Service       | Nodemailer                     |
-| Templating Engine   | Handlebars                     |
-| Migrations          | Prisma Migrate + Sequelize CLI |
-
-</div>
-
----
-
-# 📂 Project Structure
-
-```text
-services/
-├── api-gateway/
-├── booking-service/
-├── hotel-service/
-├── notification-service/
-├── review-service/
+    A --> B
+    B --> C
+    C -->|No| D
+    C -->|Yes| E
+    E --> F
+    F -->|No| G
+    F -->|Yes| H
+    H --> I
+    I --> J
+    J --> K
+    K --> L
+    L --> M
 ```
 
 ---
 
-# ⚙️ Getting Started
+## Booking Confirmation Flow
 
-# Clone Repository
+```mermaid
+flowchart TD
+    A["Client sends idempotencyKey\n+ JWT token in header"]
+    B["Start Prisma transaction\nall steps are atomic"]
+    C["SELECT FOR UPDATE\non IdempotencyKey row\npessimistic lock acquired"]
+    D{"finalized\n= true?"}
+    E["Reject\nAlready confirmed"]
+    F["Extract userId\nfrom idempotencyKey via join"]
+    G{"Same user\nas JWT?"}
+    H["Reject\nUnauthorized"]
+    I["Update booking\nPENDING → CONFIRMED"]
+    J["Update IdempotencyKey\nfinalized → true"]
+    K["Commit transaction"]
+    L["Push job to Redis queue\nNotification service sends email"]
+
+    A --> B
+    B --> C
+    C --> D
+    D -->|Yes| E
+    D -->|No| F
+    F --> G
+    G -->|No| H
+    G -->|Yes| I
+    I --> J
+    J --> K
+    K --> L
+```
+
+> If any step fails, the entire transaction rolls back automatically.
+
+---
+
+## Ghost Booking Cleanup
+
+```mermaid
+flowchart LR
+    A["Cron job\n* * * * *\nevery minute"]
+    B["Query bookings\nstatus=PENDING\nAND expiredAt < now"]
+    C{"Any expired\nbookings found?"}
+    D["Skip\nnothing to clean"]
+    E["Mark each booking\nstatus → EXPIRED"]
+    F["Call Hotel Service\nPATCH /rooms/release\nbookingId → NULL"]
+    G["Room available\nfor other users"]
+
+    A --> B
+    B --> C
+    C -->|No| D
+    C -->|Yes| E
+    E --> F
+    F --> G
+```
+
+---
+
+## Database Schema
+
+### Booking Service — `airbnb_booking_dev`
+
+```mermaid
+erDiagram
+    Booking ||--|| IdempotencyKey : "has one"
+
+    Booking {
+        int id PK
+        int userId
+        int hotelId
+        int roomCategoryId
+        datetime checkInDate
+        datetime checkOutDate
+        int bookingAmount
+        int totalGuests
+        enum status
+        datetime expiredAt
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    IdempotencyKey {
+        int id PK
+        string idemKey UK
+        boolean finalized
+        int bookingId FK
+        datetime createdAt
+        datetime updatedAt
+    }
+```
+
+### Hotel Service — `airbnb_dev_mode`
+
+```mermaid
+erDiagram
+    Hotels ||--o{ RoomCategory : "has many"
+    RoomCategory ||--o{ Rooms : "has many"
+
+    Hotels {
+        int id PK
+        string name
+        string address
+        string location
+        float rating
+        int ratingCount
+        datetime deleted_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    RoomCategory {
+        int id PK
+        string type
+        int price
+        int hotelId FK
+    }
+
+    Rooms {
+        int id PK
+        int roomCategoryId FK
+        int bookingId
+        datetime dateOfAvailability
+        int price
+    }
+```
+
+> `Rooms.bookingId` links to `Booking.id` across services by value — not a foreign key, since the databases are separate.
+
+---
+
+## Service Communication
+
+```mermaid
+graph LR
+    BS["📅 Booking Service"]
+    HS["🏨 Hotel Service"]
+    NS["📧 Notification Service"]
+    RS["⭐ Review Service"]
+
+    BS -->|"GET /rooms/availability\nCheck room availability"| HS
+    BS -->|"PATCH /rooms/update-booking\nAssign bookingId to room"| HS
+    BS -->|"PATCH /rooms/release\nRelease room on expiry"| HS
+    BS -->|"Redis Queue mailer-queue\nPush email job"| NS
+    RS -->|"PATCH /hotels/:id/rating\nUpdate hotel rating"| HS
+```
+
+| From | To | Method | When |
+|---|---|---|---|
+| Booking Service | Hotel Service | HTTP GET | Check room availability |
+| Booking Service | Hotel Service | HTTP PATCH | Assign bookingId to room |
+| Booking Service | Hotel Service | HTTP PATCH | Release room on expiry |
+| Booking Service | Notification Service | Redis Queue | Send booking email |
+| Review Service | Hotel Service | HTTP PATCH | Update hotel rating |
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Reason |
+|---|---|---|
+| API Gateway | Golang | Fast, concurrent, low memory |
+| Microservices | Node.js + TypeScript | Non-blocking I/O, type safety |
+| Booking ORM | Prisma | Auto-generated types, clean transaction API |
+| Hotel ORM | Sequelize | Mature, flexible migrations |
+| Database | MySQL | Relational data, ACID transactions |
+| Distributed lock | Redis + Redlock | Atomic SET NX PX operations |
+| Job queues | BullMQ + Redis | Reliable async processing with retries |
+| Email | Nodemailer + Handlebars | Transactional emails with reusable templates |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js v18+
+- Golang 1.21+
+- MySQL
+- Redis
+
+### Clone the repository
 
 ```bash
 git clone https://github.com/saisathwik22/Airbnb-Node
+cd Airbnb-Node
 ```
 
----
-
-# Install Dependencies
+### Setup each service
 
 ```bash
+cd <service-name>
 npm install
+cp .env.example .env
+# Fill in your environment variables
+npm run dev
 ```
 
----
+### Run migrations
 
-# Setup Environment Variables
+**Booking Service (Prisma):**
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
+
+**Hotel Service (Sequelize):**
+```bash
+npm run migrate
+```
+
+### Rollback migrations
+
+**Booking Service:**
+```bash
+npx prisma migrate reset
+```
+
+**Hotel Service:**
+```bash
+npm run rollback
+```
+
+### Environment variables
+
+Each service needs its own `.env` file. Common variables:
 
 ```env
 PORT=3001
 DATABASE_URL=mysql://user:password@localhost:3306/db_name
 REDIS_HOST=localhost
 REDIS_PORT=6379
-JWT_SECRET=your_secret
+JWT_SECRET=your_jwt_secret
+LOCK_TTL=60000
 ```
 
 ---
 
-# Run Prisma Migrations
+## Project Structure
 
-```bash
-npx prisma migrate dev
+```
+Airbnb-Node/
+├── api-gateway/          ← Golang API Gateway
+├── hotel-service/        ← Node.js + Sequelize
+├── booking-service/      ← Node.js + Prisma
+├── notification-service/ ← Node.js + BullMQ
+├── review-service/       ← Node.js + Cron
+└── README.md
 ```
 
 ---
 
-# Start Development Server
+## License
 
-```bash
-npm run dev
-```
-
----
-
-# ✨ Key Engineering Highlights
-
-✅ Microservices Architecture
-
-✅ Distributed Locking using Redis Redlock
-
-✅ Queue-Based Asynchronous Communication
-
-✅ Idempotent Booking Confirmation
-
-✅ Transactional Consistency with Prisma
-
-✅ Cron-Based Cleanup Systems
-
-✅ Layered and Maintainable Codebase
-
-✅ Scalable Service-Oriented Design
-
----
-
-
-Feel free to use this project for learning and reference.
+MIT License — feel free to use this project for learning and reference.
