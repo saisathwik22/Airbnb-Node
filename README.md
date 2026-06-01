@@ -531,6 +531,3 @@ Airbnb-Node/
 
 ---
 
-## License
-
-MIT License — feel free to use this project for learning and reference.
